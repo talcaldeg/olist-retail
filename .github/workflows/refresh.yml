@@ -1,0 +1,48 @@
+# Monthly reload and rebuild. The GCP project runs in the BigQuery sandbox (no billing
+# account, so it can never be charged), and the sandbox deletes every table 60 days after
+# it was created. load_raw.py drops and recreates raw_olist and dbt build recreates the
+# models, which restarts that clock; running monthly keeps a wide margin under 60 days.
+#
+# Authentication is keyless: GitHub's OIDC token is exchanged through Workload Identity
+# Federation. The provider only accepts this repository (by numeric id) on main, and that
+# identity holds BigQuery data editor and job user on the project, nothing else.
+name: Monthly refresh
+
+on:
+  schedule:
+    - cron: "17 11 1 * *"  # 1st of every month, 11:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/61525453329/locations/global/workloadIdentityPools/github/providers/olist-retail
+          project_id: olist-retail-portfolio
+
+      - name: Reload raw_olist
+        run: python scripts/load_raw.py
+
+      - name: dbt build
+        run: dbt build --profiles-dir .

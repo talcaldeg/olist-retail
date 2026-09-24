@@ -1,0 +1,34 @@
+version: 2
+
+# Synthetic assumptions: Olist publishes no costs and no inventory. Values are set per
+# category family and explained in docs/assumptions.md. Edit the CSV, not the models.
+seeds:
+  - name: category_cost
+    description: Cost of goods as a share of the selling price, per category.
+    columns:
+      - name: category
+        data_tests: [unique, not_null]
+      - name: family
+        data_tests: [not_null]
+      - name: cost_ratio
+        data_tests: [not_null]
+
+  - name: initial_stock
+    description: Opening stock of a (product, seller), in months of its average demand.
+    columns:
+      - name: category
+        data_tests: [unique, not_null]
+      - name: family
+        data_tests: [not_null]
+      - name: months_of_cover
+        data_tests: [not_null]
+
+  - name: lead_time
+    description: Days between placing a replenishment order and receiving it.
+    columns:
+      - name: category
+        data_tests: [unique, not_null]
+      - name: family
+        data_tests: [not_null]
+      - name: lead_time_days
+        data_tests: [not_null]

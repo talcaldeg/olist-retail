@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: fct_venta_linea
+    description: >
+      Sales at order-item grain (one unit per row). Revenue is price; freight is kept
+      apart because the seller does not keep it. unit_cost and gross_margin rest on the
+      synthetic cost ratio in seeds/category_cost.csv.
+    columns:
+      - name: sale_line_id
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: consumes_stock
+        description: False for canceled and unavailable orders, which never shipped.
+        data_tests: [not_null]
+      - name: purchase_date
+        data_tests: [not_null]
+      - name: unit_cost
+        data_tests: [not_null]
+
+  - name: fct_movimiento_stock
+    description: >
+      Simulated stock movements per (product, seller): opening stock, monthly
+      replenishment and one unit out per sale. Summing quantity up to a date gives the
+      stock on hand; a negative balance is a stockout served as a backorder.
+    columns:
+      - name: movement_id
+        data_tests: [unique, not_null]
+      - name: movement_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [initial_stock, replenishment, sale]
+      - name: movement_date
+        data_tests: [not_null]
+      - name: quantity
+        data_tests: [not_null]
+      - name: sale_line_id
+        description: The sale line behind a sale movement; null for the other types.
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_venta_linea')
+                field: sale_line_id

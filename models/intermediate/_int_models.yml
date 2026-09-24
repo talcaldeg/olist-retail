@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: int_producto
+    description: >
+      One row per product with its category key and the seed assumptions. The not_null
+      tests on the seed columns are what guarantee every category has a seed row.
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: category_family
+        data_tests: [not_null]
+      - name: cost_ratio
+        data_tests: [not_null]
+      - name: months_of_cover
+        data_tests: [not_null]
+      - name: lead_time_days
+        data_tests: [not_null]
+
+  - name: int_producto_vendedor
+    description: One row per (product, seller), with the standard unit cost both facts use.
+    data_tests:
+      - unique:
+          column_name: "concat(product_id, '-', seller_id)"
+    columns:
+      - name: unit_cost
+        data_tests: [not_null]

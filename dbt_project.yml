@@ -18,3 +18,23 @@ models:
     # and always reflect the latest load.
     staging:
       +materialized: view
+    intermediate:
+      +materialized: view
+    # Facts are read by every mart and by the semantic layer: store them once.
+    dimensional:
+      +materialized: table
+
+seeds:
+  olist_retail:
+    +column_types:
+      category: string
+      family: string
+    category_cost:
+      +column_types:
+        cost_ratio: numeric
+    initial_stock:
+      +column_types:
+        months_of_cover: numeric
+    lead_time:
+      +column_types:
+        lead_time_days: int64
