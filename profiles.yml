@@ -1,0 +1,22 @@
+# No secrets here: authentication is Application Default Credentials (`gcloud auth
+# application-default login` locally, workload identity in CI).
+#
+# Cost guardrails, so the project never leaves BigQuery's free tier:
+#   - maximum_bytes_billed makes any single query that would scan more than 1 GB fail
+#     instead of running (the whole raw dataset is ~100 MB).
+#   - The GCP project also has a hard quota of 30 GiB of queries per day
+#     (30 x 31 = 930 GiB < the 1 TiB monthly free tier).
+olist_retail:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('OLIST_GCP_PROJECT', 'olist-retail-portfolio') }}"
+      dataset: "{{ env_var('OLIST_DBT_DATASET', 'dbt_dev') }}"
+      location: US
+      threads: 4
+      priority: interactive
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      maximum_bytes_billed: 1000000000

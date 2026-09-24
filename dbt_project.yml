@@ -1,0 +1,20 @@
+name: olist_retail
+version: "0.1.0"
+config-version: 2
+profile: olist_retail
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+analysis-paths: ["analyses"]
+snapshot-paths: ["snapshots"]
+
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  olist_retail:
+    # Staging is a thin, one-to-one cleanup of raw_olist: views cost nothing to store
+    # and always reflect the latest load.
+    staging:
+      +materialized: view

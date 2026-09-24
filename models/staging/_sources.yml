@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: olist
+    description: >
+      Raw Olist tables as loaded by scripts/load_raw.py (Brazilian e-commerce, 2016-2018).
+      Timestamps are Brazil local wall-clock times stored as TIMESTAMP; staging converts
+      them to DATETIME so nobody mistakes them for UTC.
+    database: "{{ env_var('OLIST_GCP_PROJECT', 'olist-retail-portfolio') }}"
+    schema: raw_olist
+    tables:
+      - name: customers
+      - name: geolocation
+      - name: order_items
+      - name: order_payments
+      - name: order_reviews
+      - name: orders
+      - name: products
+      - name: sellers
+      - name: product_category_name_translation
