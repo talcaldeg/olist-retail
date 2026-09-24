@@ -1,11 +1,10 @@
 # No secrets here: authentication is Application Default Credentials (`gcloud auth
 # application-default login` locally, workload identity in CI).
 #
-# Cost guardrails, so the project never leaves BigQuery's free tier:
-#   - maximum_bytes_billed makes any single query that would scan more than 1 GB fail
-#     instead of running (the whole raw dataset is ~100 MB).
-#   - The GCP project also has a hard quota of 30 GiB of queries per day
-#     (30 x 31 = 930 GiB < the 1 TiB monthly free tier).
+# Cost: the GCP project has no billing account linked (BigQuery sandbox), so it cannot
+# be charged; past the free tier queries fail instead of billing. maximum_bytes_billed
+# still stops any single query that would scan more than 1 GB (raw is ~100 MB), which
+# catches a runaway join long before the sandbox limit does.
 olist_retail:
   target: dev
   outputs:
