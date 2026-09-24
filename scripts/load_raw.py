@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import sys
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from google.cloud import bigquery
@@ -22,6 +23,7 @@ from google.cloud import bigquery
 PROJECT = "olist-retail-portfolio"
 DATASET = "raw_olist"
 LOCATION = "US"
+EXPIRATION_MS = 59 * 24 * 60 * 60 * 1000  # sandbox limit is 60 days
 
 BASE_URL = "https://huggingface.co/datasets/bulutttt/olist-raw-data/resolve/main"
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
@@ -158,10 +160,34 @@ def download(force: bool) -> None:
         urllib.request.urlretrieve(f"{BASE_URL}/{csv_name}", target)
 
 
+def ensure_dataset(client: bigquery.Client) -> None:
+    """Create the dataset so it is valid in the BigQuery sandbox.
+
+    The project has no billing account linked, so it can never be charged; the price
+    is that the sandbox rejects datasets and tables without an expiration under 60
+    days. Tables that predate the sandbox get one too, or WRITE_TRUNCATE is refused.
+    """
+    dataset = bigquery.Dataset(f"{PROJECT}.{DATASET}")
+    dataset.location = LOCATION
+    dataset.default_table_expiration_ms = EXPIRATION_MS
+    dataset.default_partition_expiration_ms = EXPIRATION_MS
+    dataset = client.create_dataset(dataset, exists_ok=True)
+    if dataset.default_table_expiration_ms != EXPIRATION_MS:
+        dataset.default_table_expiration_ms = EXPIRATION_MS
+        dataset.default_partition_expiration_ms = EXPIRATION_MS
+        client.update_dataset(
+            dataset, ["default_table_expiration_ms", "default_partition_expiration_ms"]
+        )
+    expires = datetime.now(timezone.utc) + timedelta(milliseconds=EXPIRATION_MS)
+    for item in client.list_tables(dataset):
+        table = client.get_table(item.reference)
+        if table.expires is None or table.expires > expires:
+            table.expires = expires
+            client.update_table(table, ["expires"])
+
+
 def load(client: bigquery.Client) -> list[str]:
-    client.create_dataset(
-        bigquery.Dataset(f"{PROJECT}.{DATASET}"), exists_ok=True
-    )
+    ensure_dataset(client)
     problems: list[str] = []
     for table, (csv_name, expected_rows, schema) in TABLES.items():
         job_config = bigquery.LoadJobConfig(
