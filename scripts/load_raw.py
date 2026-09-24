@@ -1,8 +1,8 @@
 """Download the Olist public dataset and load it into BigQuery `raw_olist`.
 
 Idempotent: files already downloaded are skipped (unless --force-download) and every
-table is written with WRITE_TRUNCATE, so re-running leaves the same nine tables with
-the same contents. Row counts are asserted against the published dataset so a silently
+table is dropped and reloaded, so re-running leaves the same nine tables with the same
+contents and a fresh 59-day expiration (the project runs in the BigQuery sandbox). Row counts are asserted against the published dataset so a silently
 truncated download fails loudly instead of poisoning the models downstream.
 
 Source: https://huggingface.co/datasets/bulutttt/olist-raw-data (mirror of the Kaggle
@@ -15,7 +15,6 @@ from __future__ import annotations
 import argparse
 import sys
 import urllib.request
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from google.cloud import bigquery
@@ -164,8 +163,7 @@ def ensure_dataset(client: bigquery.Client) -> None:
     """Create the dataset so it is valid in the BigQuery sandbox.
 
     The project has no billing account linked, so it can never be charged; the price
-    is that the sandbox rejects datasets and tables without an expiration under 60
-    days. Tables that predate the sandbox get one too, or WRITE_TRUNCATE is refused.
+    is that the sandbox rejects datasets without a default expiration under 60 days.
     """
     dataset = bigquery.Dataset(f"{PROJECT}.{DATASET}")
     dataset.location = LOCATION
@@ -178,18 +176,17 @@ def ensure_dataset(client: bigquery.Client) -> None:
         client.update_dataset(
             dataset, ["default_table_expiration_ms", "default_partition_expiration_ms"]
         )
-    expires = datetime.now(timezone.utc) + timedelta(milliseconds=EXPIRATION_MS)
-    for item in client.list_tables(dataset):
-        table = client.get_table(item.reference)
-        if table.expires is None or table.expires > expires:
-            table.expires = expires
-            client.update_table(table, ["expires"])
 
 
 def load(client: bigquery.Client) -> list[str]:
     ensure_dataset(client)
     problems: list[str] = []
     for table, (csv_name, expected_rows, schema) in TABLES.items():
+        table_id = f"{PROJECT}.{DATASET}.{table}"
+        # The sandbox caps expiration at 60 days from the table's *creation*, and
+        # WRITE_TRUNCATE keeps the original creation time. Dropping first makes every
+        # reload start a fresh 59-day window.
+        client.delete_table(table_id, not_found_ok=True)
         job_config = bigquery.LoadJobConfig(
             schema=schema,
             source_format=bigquery.SourceFormat.CSV,
@@ -197,7 +194,6 @@ def load(client: bigquery.Client) -> list[str]:
             allow_quoted_newlines=True,  # review comments contain line breaks
             write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
         )
-        table_id = f"{PROJECT}.{DATASET}.{table}"
         with open(RAW_DIR / csv_name, "rb") as fh:
             client.load_table_from_file(fh, table_id, job_config=job_config).result()
         got = client.get_table(table_id).num_rows
