@@ -27,3 +27,28 @@ models:
     columns:
       - name: unit_cost
         data_tests: [not_null]
+
+  - name: int_stock_saldo
+    description: >
+      The stock ledger: each simulated movement with the balance of its (product,
+      seller) right after it. Receipts go before sales within a day. A sale that leaves
+      the balance below zero is a backorder.
+    columns:
+      - name: movement_id
+        data_tests: [unique, not_null]
+      - name: balance_after
+        data_tests: [not_null]
+
+  - name: int_stock_par_mes
+    description: >
+      Monthly stock position per (product, seller), from its first month to the last
+      month with sales. On-hand columns floor the balance at zero per pair; the
+      unfloored balance stays in opening_units and closing_units.
+    data_tests:
+      - unique:
+          column_name: "concat(product_id, '-', seller_id, '-', cast(month_start as string))"
+    columns:
+      - name: month_start
+        data_tests: [not_null]
+      - name: closing_units
+        data_tests: [not_null]

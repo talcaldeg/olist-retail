@@ -1,0 +1,98 @@
+version: 2
+
+# One mart per business question, all at month x category grain. Each stores the
+# additive parts of its ratio next to the ratio: to report several months or a whole
+# family, sum the parts and divide again. The months outside the reporting window are
+# kept so totals reconcile with the raw data; in_reporting_window marks the comparable
+# ones (2017-01 to 2018-08). Costs and stock rest on synthetic seeds: see
+# docs/assumptions.md and docs/marts.md.
+
+models:
+  - name: mart_margen_categoria
+    description: >
+      Which categories make money. Revenue, cost of goods sold and gross margin of the
+      lines that shipped (not canceled or unavailable). Freight is excluded. The margin
+      percentage of a category is 1 minus its seed cost ratio by construction; what is
+      real is the sales mix across categories and months.
+    data_tests:
+      - unique:
+          column_name: "concat(cast(month_start as string), '-', category)"
+    columns:
+      - name: month_start
+        data_tests: [not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: category_family
+        data_tests: [not_null]
+      - name: revenue
+        description: Sum of item prices, in BRL.
+        data_tests: [not_null]
+      - name: cost_of_goods_sold
+        description: Units at their pair's standard unit cost (synthetic).
+      - name: gross_margin_pct
+        description: gross_margin / revenue.
+
+  - name: mart_rotacion_inventario
+    description: >
+      How many times a year each category turns its stock. Cost of goods sold over the
+      average inventory at cost, where a month's average is the mean of its opening and
+      closing on-hand stock. Stock that stopped selling stays on the books and drags
+      turnover down.
+    data_tests:
+      - unique:
+          column_name: "concat(cast(month_start as string), '-', category)"
+    columns:
+      - name: month_start
+        data_tests: [not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: category_family
+        data_tests: [not_null]
+      - name: avg_inventory_value
+        description: Mean of opening and closing on-hand stock, at standard cost.
+      - name: inventory_turnover
+        description: cost_of_goods_sold / avg_inventory_value, for the month.
+      - name: inventory_turnover_annualized
+        description: 12 x inventory_turnover. Do not average it across months.
+
+  - name: mart_quiebre_stock
+    description: >
+      How often a customer buys something the seller does not have. A unit is
+      backordered when its sale takes the (product, seller) balance below zero.
+    data_tests:
+      - unique:
+          column_name: "concat(cast(month_start as string), '-', category)"
+    columns:
+      - name: month_start
+        data_tests: [not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: category_family
+        data_tests: [not_null]
+      - name: stockout_rate
+        description: units_backordered / units_sold.
+      - name: pairs_short_at_close
+        description: Pairs ending the month with a negative balance.
+      - name: units_owed_at_close
+        description: Units sold but not yet covered by stock at month end.
+
+  - name: mart_cobertura_stock
+    description: >
+      How many days of sales the stock on hand covers. Closing on-hand units over the
+      month's average daily units sold; null when the category sold nothing that month.
+    data_tests:
+      - unique:
+          column_name: "concat(cast(month_start as string), '-', category)"
+    columns:
+      - name: month_start
+        data_tests: [not_null]
+      - name: category
+        data_tests: [not_null]
+      - name: category_family
+        data_tests: [not_null]
+      - name: closing_on_hand_units
+        description: Units on the shelf at month end; backorders count as zero.
+      - name: pairs_stocked_without_sales
+        description: Pairs holding stock at month end that sold nothing that month.
+      - name: days_of_cover
+        description: closing_on_hand_units / (units_sold / days_in_month).

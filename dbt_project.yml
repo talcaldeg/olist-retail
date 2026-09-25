@@ -20,9 +20,24 @@ models:
       +materialized: view
     intermediate:
       +materialized: view
+      # The stock ledgers run window functions over 34,000 pairs; every mart reads them.
+      int_stock_saldo:
+        +materialized: table
+      int_stock_par_mes:
+        +materialized: table
     # Facts are read by every mart and by the semantic layer: store them once.
     dimensional:
       +materialized: table
+    # One table per business question, at month x category grain so the semantic layer
+    # can combine them. Each carries the additive parts of its ratio: a ratio is never
+    # averaged across rows, it is recomputed from the summed parts.
+    marts:
+      +materialized: table
+
+vars:
+  # First and last month with complete data (see macros/reporting_window.sql).
+  reporting_start: "2017-01-01"
+  reporting_end: "2018-08-01"
 
 seeds:
   olist_retail:
