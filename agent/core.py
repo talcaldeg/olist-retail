@@ -254,6 +254,7 @@ def ask(
             answer.text = (message.content or "").strip()
             break
 
+        repeated = False
         for tc in calls:
             name = tc.function.name
             try:
@@ -264,6 +265,7 @@ def ask(
                 payload, result = _run_tool(name, args, spec, execute, client)
                 answer.tool_calls.append(ToolCall(name, args, ok=True))
                 if result is not None:
+                    repeated = last is not None and last["call"] == result["call"]
                     last = result
             except SemanticError as e:
                 payload = {"rejected": str(e)}
@@ -276,6 +278,12 @@ def ask(
                     "content": json.dumps(payload, default=str),
                 }
             )
+        # A dry run has no rows to talk about, and the call is what gets scored: stop at
+        # the first query that compiles. Live, the same query twice means the model is
+        # looping; its result is the answer.
+        if last is not None and (not execute or repeated):
+            answer.text = "Query compiled, not run." if not execute else "Query run: see the rows."
+            break
     else:
         answer.text = f"{REJECTED}: no answer within {MAX_STEPS} steps."
 

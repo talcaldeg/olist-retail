@@ -31,6 +31,7 @@ QUESTIONS_PATH = Path(__file__).resolve().parent / "eval_questions.yml"
 RUNS_DIR = Path(__file__).resolve().parent / "eval_runs"
 REPORT_PATH = REPO_ROOT / "docs" / "agent_eval.md"
 FIELDS = ("metric", "dimensions", "filters", "period")
+RATE_LIMIT_WAIT = 60  # seconds; free tiers reset their quota per minute
 
 
 def load_questions(path: Path = QUESTIONS_PATH) -> list[dict[str, Any]]:
@@ -143,7 +144,7 @@ def run_eval(
     model: str | None = None,
     live: bool = False,
     only: str | None = None,
-    pause: float = 4.0,
+    pause: float = 5.0,
 ) -> dict[str, Any]:
     items = [q for q in load_questions() if not only or q["id"].startswith(only)]
     for q in items:  # a typo in the expectations fails before spending any API calls
@@ -160,12 +161,17 @@ def run_eval(
     for i, item in enumerate(items):
         if i:
             time.sleep(pause)  # free tiers count requests per minute
-        try:
-            a = ask(item["question"], model=model, spec=spec, execute=live)
-            status, text, call, model_used = a.status, a.text, a.call, a.model
-            tools = [t.__dict__ for t in a.tool_calls]
-        except Exception as e:  # provider errors count as misses, the run goes on
-            status, text, call, model_used, tools = "error", repr(e), None, model, []
+        for attempt in range(3):
+            try:
+                a = ask(item["question"], model=model, spec=spec, execute=live)
+                status, text, call, model_used = a.status, a.text, a.call, a.model
+                tools = [t.__dict__ for t in a.tool_calls]
+                break
+            except Exception as e:  # provider errors count as misses, the run goes on
+                status, text, call, model_used, tools = "error", repr(e), None, model, []
+                if "RateLimit" not in type(e).__name__ or attempt == 2:
+                    break
+                time.sleep(RATE_LIMIT_WAIT)  # per-minute quota: wait for the window
         run["model"] = model_used or run["model"]
         result = {
             "id": item["id"],
@@ -189,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", help=f"litellm model id (default {DEFAULT_MODEL})")
     parser.add_argument("--live", action="store_true", help="run the queries on BigQuery")
     parser.add_argument("--only", help="only questions whose id starts with this")
-    parser.add_argument("--pause", type=float, default=4.0, help="seconds between questions")
+    parser.add_argument("--pause", type=float, default=5.0, help="seconds between questions")
     parser.add_argument("--report", action="store_true", help=f"write {REPORT_PATH.name}")
     args = parser.parse_args(argv)
 
