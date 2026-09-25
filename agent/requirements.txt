@@ -1,0 +1,8 @@
+# Only what the Streamlit demo needs. Streamlit Community Cloud reads this file before the
+# one at the repo root, which also installs dbt.
+google-cloud-bigquery==3.42.2
+pyyaml==6.0.3
+litellm==1.102.1
+pandas==3.0.5
+python-dotenv==1.2.2
+streamlit==1.64.0
