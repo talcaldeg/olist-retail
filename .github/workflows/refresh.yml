@@ -46,3 +46,10 @@ jobs:
 
       - name: dbt build
         run: dbt build --profiles-dir .
+
+      # The compiled SQL must still reproduce every mart ratio and the documented figures
+      # on the freshly built tables.
+      - name: Semantic layer tests
+        run: python -m pytest
+        env:
+          OLIST_LIVE_TESTS: "1"

@@ -1,0 +1,94 @@
+# Semantic layer: the only questions the project answers.
+#
+# Each metric is a ratio of two parts stored in one mart (models/marts, month x category
+# grain). The compiler (semantic/compiler.py) sums the parts over whatever grouping the
+# question asks for and divides again; it never averages the ratio column of the mart,
+# which would weight a category selling ten units like one selling ten thousand.
+#
+# A question the metrics below cannot express is rejected, not approximated: there is no
+# free SQL anywhere above this file.
+
+version: 1
+
+source:
+  # Overridable with the same environment variables as profiles.yml.
+  project: olist-retail-portfolio
+  dataset: dbt_dev
+
+# Months with data in the marts, and the default period when a question names none: the
+# comparable months (dbt var reporting_start/reporting_end), which leave out the sparse
+# 2016 and the single sale of September 2018.
+data_range: {start: "2016-09", end: "2018-09"}
+default_period: {start: "2017-01", end: "2018-08"}
+
+# Dimensions a question can group by or filter on. The time grains are exclusive: a
+# question groups by at most one of them. Allowed values of category and category_family
+# come from seeds/category_cost.csv, so a misspelled filter fails before reaching BigQuery.
+dimensions:
+  month: {kind: time, grain: month, description: Calendar month of the sale.}
+  quarter: {kind: time, grain: quarter, description: Calendar quarter.}
+  year: {kind: time, grain: year, description: Calendar year.}
+  category:
+    kind: categorical
+    column: category
+    values_from: {file: seeds/category_cost.csv, column: category}
+    description: Olist product category, in English (74 values).
+  category_family:
+    kind: categorical
+    column: category_family
+    values_from: {file: seeds/category_cost.csv, column: family}
+    description: One of ten families that share cost, cover and lead time assumptions.
+
+# numerator / denominator: the parts, as mart columns.
+#   aggregation sum:  flows, added across months and categories.
+#   aggregation last: a stock at month end; over several months the value of the last
+#                     month of each period counts, added across categories.
+#   per_day: true     divides the part by the calendar days of the period, so a flow
+#                     becomes a daily rate.
+# multiplier scales the ratio (turnover is reported per year).
+metrics:
+  gross_margin_pct:
+    label: Gross margin
+    question: Which categories make money, and how much of each sale is margin?
+    model: mart_margen_categoria
+    numerator: {column: gross_margin, aggregation: sum}
+    denominator: {column: revenue, aggregation: sum}
+    unit: percent
+    description: >
+      Gross margin over revenue of the lines that shipped. Revenue is the item price,
+      freight excluded. Cost is synthetic (seed cost ratio), so a single category's margin
+      is fixed by construction; what moves is the mix across categories.
+
+  inventory_turnover:
+    label: Inventory turnover (per year)
+    question: How many times a year does the stock turn?
+    model: mart_rotacion_inventario
+    numerator: {column: cost_of_goods_sold, aggregation: sum}
+    denominator: {column: avg_inventory_value, aggregation: sum}
+    multiplier: 12
+    unit: times per year
+    description: >
+      Cost of goods sold over average inventory at cost, annualized. Summing the monthly
+      average inventories and multiplying by 12 is the same as dividing by the mean
+      inventory of the period and scaling to a year, whatever the number of months.
+
+  stockout_rate:
+    label: Stockout rate
+    question: How often is a customer sold something the seller does not have?
+    model: mart_quiebre_stock
+    numerator: {column: units_backordered, aggregation: sum}
+    denominator: {column: units_sold, aggregation: sum}
+    unit: percent
+    description: >
+      Units sold while the (product, seller) balance was below zero, over units sold.
+
+  days_of_cover:
+    label: Days of cover
+    question: How many days of sales does the stock on hand last?
+    model: mart_cobertura_stock
+    numerator: {column: closing_on_hand_units, aggregation: last}
+    denominator: {column: units_sold, aggregation: sum, per_day: true}
+    unit: days
+    description: >
+      Units on hand at the end of the period over the average daily units sold in it.
+      Null when nothing sold: stock without demand has no finite cover.
