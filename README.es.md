@@ -161,7 +161,7 @@ BigQuery, dbt 1.12, Python 3.12, litellm con Gemini, Streamlit, pytest, GitHub A
 
 ## Datos y licencia
 
-Olist publica su dataset en Kaggle con licencia CC BY-NC-SA 4.0; el loader lee un espejo
+El código tiene [licencia MIT](LICENSE). Olist publica su dataset en Kaggle con licencia CC BY-NC-SA 4.0; el loader lee un espejo
 público para que el proyecto corra sin credenciales de Kaggle. Las cifras de costo y de
 stock son sintéticas, como se explica en [docs/assumptions.md](docs/assumptions.md). La
 documentación técnica en `docs/` está en inglés.
