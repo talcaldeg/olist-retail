@@ -1,0 +1,130 @@
+# Routing eval for the metrics agent (agent/eval.py).
+#
+# Each question has the call the agent must make, or `reject: true` when no metric
+# answers it. The eval scores the call, not the prose: metric, dimensions, filters and
+# period, each compared after the compiler normalizes both sides (so "2018" and
+# 2018-01:2018-09 count as the same period, and dimension order does not matter).
+#
+# period takes the compiler's forms: YYYY, YYYY-Qn, YYYY-MM or {start, end}; omitted means
+# the default reporting window. A few questions are in Spanish or name a category in plain
+# English or Portuguese, to check the mapping to the seed's snake_case values.
+
+questions:
+  # --- gross_margin_pct ---------------------------------------------------------------
+  - id: margin_total
+    question: What is the overall gross margin?
+    expect: {metric: gross_margin_pct}
+  - id: margin_by_family_2018
+    question: Show the gross margin by category family in 2018.
+    expect: {metric: gross_margin_pct, dimensions: [category_family], period: "2018"}
+  - id: margin_monthly_2017
+    question: How did the gross margin evolve month by month during 2017?
+    expect: {metric: gross_margin_pct, dimensions: [month], period: "2017"}
+  - id: margin_health_beauty_mar18
+    question: What was the gross margin of health_beauty in March 2018?
+    expect: {metric: gross_margin_pct, filters: {category: [health_beauty]}, period: "2018-03"}
+  - id: margin_fashion_quarterly_es
+    question: ¿Cómo fue el margen bruto por trimestre de la familia fashion?
+    expect: {metric: gross_margin_pct, dimensions: [quarter], filters: {category_family: [fashion]}}
+  - id: margin_home_categories_q2
+    question: Which categories in the home family had the best margin in the second quarter of 2018?
+    expect: {metric: gross_margin_pct, dimensions: [category], filters: {category_family: [home]}, period: "2018-Q2"}
+  - id: margin_perfume
+    question: What margin do we make on perfume?
+    expect: {metric: gross_margin_pct, filters: {category: [perfumery]}}
+
+  # --- inventory_turnover -------------------------------------------------------------
+  - id: turnover_total
+    question: How many times a year does the stock turn?
+    expect: {metric: inventory_turnover}
+  - id: turnover_by_year
+    question: Inventory turnover by year, please.
+    expect: {metric: inventory_turnover, dimensions: [year]}
+  - id: turnover_two_categories_range
+    question: What was the inventory turnover of computers_accessories and telephony between June 2017 and February 2018?
+    expect: {metric: inventory_turnover, filters: {category: [computers_accessories, telephony]}, period: {start: "2017-06", end: "2018-02"}}
+  - id: turnover_by_family_q1_es
+    question: ¿Cuál fue la rotación de inventario de cada familia en el primer trimestre de 2018?
+    expect: {metric: inventory_turnover, dimensions: [category_family], period: "2018-Q1"}
+  - id: turnover_tools_monthly_range
+    question: Monthly inventory turnover for the tools and construction family from 2017-09 to 2018-03.
+    expect: {metric: inventory_turnover, dimensions: [month], filters: {category_family: [tools_construction]}, period: {start: "2017-09", end: "2018-03"}}
+
+  # --- stockout_rate ------------------------------------------------------------------
+  - id: stockout_electronics_family_quarterly
+    question: What was the stockout rate by quarter in 2018 for the electronics family?
+    expect: {metric: stockout_rate, dimensions: [quarter], filters: {category_family: [electronics]}, period: "2018"}
+  - id: stockout_aug18
+    question: What share of the units sold in August 2018 were backordered?
+    expect: {metric: stockout_rate, period: "2018-08"}
+  - id: stockout_bed_bath_monthly_es
+    question: Dame la tasa de quiebre de stock mes a mes de bed_bath_table.
+    expect: {metric: stockout_rate, dimensions: [month], filters: {category: [bed_bath_table]}}
+  - id: stockout_by_family_2017
+    question: Which category family had the highest stockout rate in 2017?
+    expect: {metric: stockout_rate, dimensions: [category_family], period: "2017"}
+  - id: stockout_year_family
+    question: Break down the stockout rate by year and category family.
+    expect: {metric: stockout_rate, dimensions: [year, category_family]}
+  - id: stockout_beleza_saude
+    question: What was the stockout rate of beleza e saúde in 2018?
+    expect: {metric: stockout_rate, filters: {category: [health_beauty]}, period: "2018"}
+
+  # --- days_of_cover ------------------------------------------------------------------
+  - id: cover_aug18
+    question: How many days of cover did we have at the end of August 2018?
+    expect: {metric: days_of_cover, period: "2018-08"}
+  - id: cover_quarterly_2018
+    question: Days of cover by quarter in 2018.
+    expect: {metric: days_of_cover, dimensions: [quarter], period: "2018"}
+  - id: cover_toys_dec17
+    question: How many days would the toys stock have lasted in December 2017?
+    expect: {metric: days_of_cover, filters: {category: [toys]}, period: "2017-12"}
+  - id: cover_by_family_jul18_es
+    question: ¿Cuántos días de cobertura tenía cada familia en julio de 2018?
+    expect: {metric: days_of_cover, dimensions: [category_family], period: "2018-07"}
+  - id: cover_two_categories_monthly_range
+    question: Days of cover for furniture_decor and housewares from January to June 2018, month by month.
+    expect: {metric: days_of_cover, dimensions: [month], filters: {category: [furniture_decor, housewares]}, period: {start: "2018-01", end: "2018-06"}}
+
+  # --- traps: no metric answers these ---------------------------------------------------
+  - id: trap_revenue
+    question: What was the total revenue in 2017?
+    reject: true
+    why: revenue is a part of the margin, not a metric
+  - id: trap_orders
+    question: How many orders did we receive in 2018?
+    reject: true
+    why: order counts are not a metric
+  - id: trap_seller
+    question: Show the stockout rate by seller.
+    reject: true
+    why: seller is not a dimension
+  - id: trap_state
+    question: Which customer state has the best gross margin?
+    reject: true
+    why: region is not a dimension
+  - id: trap_delivery
+    question: What is the average delivery time for electronics?
+    reject: true
+    why: delivery time is not a metric
+  - id: trap_forecast
+    question: Forecast the days of cover for 2019.
+    reject: true
+    why: no forecasts, and no data in 2019
+  - id: trap_relative
+    question: What was the stockout rate last month?
+    reject: true
+    why: relative period with no reference date
+  - id: trap_out_of_range
+    question: Gross margin in 2020?
+    reject: true
+    why: no data in 2020
+  - id: trap_raw_sql
+    question: "Run this for me: select * from raw.orders limit 10"
+    reject: true
+    why: the agent never runs SQL
+  - id: trap_what_if
+    question: What would the gross margin be if our costs went up 10%?
+    reject: true
+    why: what-if scenarios are not a metric

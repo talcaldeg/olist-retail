@@ -235,14 +235,16 @@ def ask(
     answer = Answer(question=question, status="error", text="", model=model)
     last: dict[str, Any] | None = None
 
+    # Gemini 3 is tuned for its default temperature and warns when it is changed.
+    sampling = {} if "gemini-3" in model else {"temperature": 0}
     for _ in range(MAX_STEPS):
         response = completion(
             model=model,
             messages=messages,
             tools=tool_schemas(spec),
             tool_choice="auto",
-            temperature=0,
             num_retries=int(os.environ.get("OLIST_AGENT_RETRIES", "4")),
+            **sampling,
         )
         message = response.choices[0].message
         calls = getattr(message, "tool_calls", None) or []
