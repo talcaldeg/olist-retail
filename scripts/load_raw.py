@@ -13,13 +13,14 @@ can be cloned and run without Kaggle credentials.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import urllib.request
 from pathlib import Path
 
 from google.cloud import bigquery
 
-PROJECT = "olist-retail-portfolio"
+PROJECT = os.environ.get("OLIST_GCP_PROJECT", "olist-retail-portfolio")
 DATASET = "raw_olist"
 LOCATION = "US"
 EXPIRATION_MS = 59 * 24 * 60 * 60 * 1000  # sandbox limit is 60 days
