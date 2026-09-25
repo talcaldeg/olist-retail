@@ -53,7 +53,7 @@ Portuguese category name.
   sales, and inventory turned 2.45 times a year over the reporting window.
 - **Why both.** The stock sits in the long tail. Of the 47,333 units on hand at the end
   of August 2018, 85% belonged to pairs that sold nothing that month and 61% to pairs whose
-  no sale since April. Meanwhile the pairs that do sell run out: in March 2018,
+  last sale was in April or earlier. Meanwhile the pairs that do sell run out: in March 2018,
   `computers_accessories` backordered 37% of its units with 90 days of cover on paper.
   The replenishment policy reorders last month's sales for every pair alike, so it
   neither clears slow stock nor keeps up with growing items.
