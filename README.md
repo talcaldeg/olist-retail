@@ -121,7 +121,7 @@ Then the semantic layer and the agent:
 ```bash
 python -m semantic days_of_cover --by quarter --where category_family=home --period 2018 --sql
 echo "GEMINI_API_KEY=..." > .env
-python -m agent "What was the stockout rate by quarter in 2018 for electronics?"
+python -m agent "What was the stockout rate by quarter in 2018 for the electronics family?"
 streamlit run agent/demo.py
 ```
 
