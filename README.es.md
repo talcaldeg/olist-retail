@@ -5,6 +5,11 @@
 
 *[Read in English](README.md)*
 
+**[Probar la demo en vivo](https://olist-metrics-agent.streamlit.app)**: se escribe una
+pregunta y se ve la métrica que eligió el modelo, el SQL que escribió la capa semántica y el
+resultado. Corre en un nivel gratuito, así que una respuesta puede tardar medio minuto. La
+demo está en inglés, pero acepta preguntas en español.
+
 Si a un modelo de lenguaje se le pide SQL sobre un esquema crudo, casi siempre entrega algo
 que corre. Otra cosa es que calcule la cifra que el negocio tiene en mente. Este proyecto
 toma el camino contrario: las preguntas de negocio se definen una vez, en dbt y en una capa

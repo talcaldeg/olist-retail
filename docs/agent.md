@@ -64,7 +64,7 @@ A question in; the answer, the routed call (metric, dimensions, filters, period)
 generated SQL and the result table out, with the tool calls in an expander. Needs
 `GEMINI_API_KEY` and BigQuery credentials in `GOOGLE_APPLICATION_CREDENTIALS`.
 
-Deployed on Streamlit Community Cloud, the keys come from the app's secrets
+Live at <https://olist-metrics-agent.streamlit.app>. Deployed on Streamlit Community Cloud, the keys come from the app's secrets
 (`GEMINI_API_KEY` at the root, a service account key under `[gcp_service_account]`), and
 the Python packages from `agent/requirements.txt`, which leaves dbt out. The service account
 `olist-demo` can run queries and read the dataset with the marts, nothing else: the raw

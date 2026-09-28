@@ -5,6 +5,10 @@
 
 *[Leer en español](README.es.md)*
 
+**[Try the live demo](https://olist-metrics-agent.streamlit.app)**: type a question, see the
+metric the model picked, the SQL the semantic layer wrote and the result. It runs on a free
+tier, so an answer can take half a minute.
+
 Ask a language model for SQL over a raw schema and it will usually give you something that
 runs. Whether it computed the number the business means is another matter. This project
 takes the opposite route: the business questions are defined once, in dbt and a small
